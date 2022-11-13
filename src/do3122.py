@@ -112,7 +112,7 @@ def main():
 
   rxData = b''
 
-  with serial.Serial('/dev/dmmlink', 9600, timeout=5) as ser:
+  with serial.Serial(config['dmmport'], 9600, timeout=5) as ser:
 
     rxData = sync(ser)
 

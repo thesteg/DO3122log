@@ -1,3 +1,4 @@
 {
-    "outdir" : "/tmp/meas_external",
+    "dmmport" : "/dev/do3122link",
+    "outdir" : "/tmp/meas_external"
 }
