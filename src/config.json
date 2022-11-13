@@ -1,4 +1,4 @@
 {
     "dmmport" : "/dev/do3122link",
-    "outdir" : "/tmp/meas_external"
+    "outdir" : "/datalog/meas_external"
 }
