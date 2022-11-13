@@ -60,13 +60,13 @@ def processPacket(data : bytearray):
     outfile = 'temperature_c'
   elif data[20] == 0x02:
     outfile = 'temperature_f'
-  elif data[20] == 0x10:
+  elif data[20] == 0x90:
     outfile = 'capacitance_f'
     multiplier = 0.001
-  elif data[20] == 0x20:
+  elif data[20] == 0xA0:
     outfile = 'capacitance_f'
     multiplier = 0.000001
-  elif data[20] == 0x40:
+  elif data[20] == 0xC0:
     outfile = 'capacitance_f'
     multiplier = 0.000000001
   else:
