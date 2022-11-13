@@ -1,7 +1,9 @@
 #!/bin/python
 
+import logging
 import serial
-
+import json
+import os
 
 digitDict = {
   0x5f:'0',
@@ -16,9 +18,13 @@ digitDict = {
   0x67:'9'
 }
 
-global currentA
 
-currentA = 0.0
+
+with open('config.json') as js_conf:
+  config = json.load(js_conf)
+
+if not os.path.exists(config['outdir']):
+  os.makedirs(config['outdir'])
 
 
 def sync(ser : serial) -> bytearray:
@@ -30,7 +36,7 @@ def sync(ser : serial) -> bytearray:
 
   rxSync += ser.read(18)
 
-  print(rxSync)
+  logger.debug('sync')
 
   return rxSync[-22:]
 
@@ -38,9 +44,50 @@ def sync(ser : serial) -> bytearray:
 def processPacket(data : bytearray):
 
   global currentA
+  global config
 
-  if data[21] & 0x04 == 0:
+  multiplier = 1.0
+
+  if data[21] & 0xCC == 0x04:
+    outfile = 'current'
+  elif data[21] & 0xCC == 0x08:
+    outfile = 'voltage'
+  elif data[21] & 0xCC == 0x40:
+    outfile = 'resistance'
+  elif data[21] & 0xCC == 0x80:
+    outfile = 'frequency'
+  elif data[20] == 0x01:
+    outfile = 'temperature_c'
+  elif data[20] == 0x02:
+    outfile = 'temperature_f'
+  elif data[20] == 0x10:
+    outfile = 'capacitance_f'
+    multiplier = 0.001
+  elif data[20] == 0x20:
+    outfile = 'capacitance_f'
+    multiplier = 0.000001
+  elif data[20] == 0x40:
+    outfile = 'capacitance_f'
+    multiplier = 0.000000001
+  else:
     return
+
+  if data[10] & 0x0F == 0x02:
+    outfile += '_ac'
+  elif data[10] & 0x0F == 0x04:
+    outfile += '_dc'
+  elif data[10] & 0x0F == 0x01:
+    # Diode test
+    return
+
+  if data[21] & 0x33 == 0x01:
+    multiplier = 0.000001
+  elif data[21] & 0x33 == 0x02:
+    multiplier = 0.001
+  elif data[21] & 0x33 == 0x10:
+    multiplier = 1000000
+  elif data[21] & 0x33 == 0x20:
+    multiplier = 1000
 
   if data[19] & 0x02 != 0:
     valuestr = '-'
@@ -53,16 +100,12 @@ def processPacket(data : bytearray):
 
     valuestr += digitDict[x & 0x7f]
 
-  result = float(valuestr)  
+  result = float(valuestr) * multiplier  
 
-  if data[21] & 0x02 != 0:
-    valuestr += 'mA'
-    result *= 0.001
-  else:
-    valuestr += 'A'
+  with open(os.path.join(config['outdir'], outfile),'w') as f:
+    f.write(str(result))
 
-  print(valuestr)
-  currentA = result
+  logger.debug('{0} : {1}'.format(outfile,result))
 
 
 def main():
@@ -71,12 +114,16 @@ def main():
 
   with serial.Serial('/dev/dmmlink', 9600, timeout=5) as ser:
 
+    rxData = sync(ser)
+
     while True:
 
-      for x in rxData:
-        print('{:X} '.format(x), end='')
+      debugstr = 'rx - '
 
-      print('')
+      for x in rxData:
+        debugstr += '{:02X} '.format(x)
+
+      logger.debug(debugstr)
 
       if len(rxData) != 22 or rxData[0] != 0xAA or rxData[1] != 0x55 or rxData[2] != 0x52 or rxData[3] != 0x24:
         rxData = sync(ser)
@@ -84,8 +131,15 @@ def main():
       try:
         processPacket(rxData)
       except:
-        print('???')
+        logger.exception('Oh no!')
 
       rxData = ser.read(22)
+
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+logger.info('Started DO3122 logger!')
+
 
 main()
