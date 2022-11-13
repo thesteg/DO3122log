@@ -8,14 +8,14 @@ import os
 digitDict = {
   0x5f:'0',
   0x06:'1',
-  0x3b:'2',
+  0x6b:'2',
   0x2f:'3',
-  0x66:'4',
-  0x6d:'5',
-  0x7c:'6',
+  0x36:'4',
+  0x3d:'5',
+  0x7d:'6',
   0x07:'7',
   0x7f:'8',
-  0x67:'9'
+  0x3f:'9'
 }
 
 
@@ -72,11 +72,11 @@ def processPacket(data : bytearray):
   else:
     return
 
-  if data[10] & 0x0F == 0x02:
+  if data[10] & 0x07 == 0x02:
     outfile += '_ac'
-  elif data[10] & 0x0F == 0x04:
+  elif data[10] & 0x07 == 0x04:
     outfile += '_dc'
-  elif data[10] & 0x0F == 0x01:
+  elif data[10] & 0x07 == 0x01:
     # Diode test
     return
 
@@ -89,7 +89,7 @@ def processPacket(data : bytearray):
   elif data[21] & 0x33 == 0x20:
     multiplier = 1000
 
-  if data[19] & 0x02 != 0:
+  if data[10] & 0x08 != 0:
     valuestr = '-'
   else:
     valuestr = ''
@@ -97,6 +97,9 @@ def processPacket(data : bytearray):
   for x in data[9:5:-1]:
     if x & 0x80:
       valuestr += '.'
+
+    if x == 0:
+      continue
 
     valuestr += digitDict[x & 0x7f]
 
